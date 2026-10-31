@@ -69,7 +69,7 @@ public class Solicitacao {
     private List<DocumentoSolicitacao> documentos = new ArrayList<>();
 
     @OneToMany(mappedBy = "solicitacao", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("id ASC")
+    @OrderBy("id DESC")
     private List<EventoHistorico> historico = new ArrayList<>();
 
     @PrePersist
@@ -97,7 +97,7 @@ public class Solicitacao {
     // Comparação exata do nome (diferencia maiúsculas/minúsculas)
     public Optional<DocumentoSolicitacao> buscarDocumento(String nomeArquivo) {
         return documentos.stream()
-                .filter(d -> d.getNomeArquivo().equals(nomeArquivo))
+                .filter(d -> d.getNomeArquivo().equalsIgnoreCase(nomeArquivo))
                 .findFirst();
     }
 

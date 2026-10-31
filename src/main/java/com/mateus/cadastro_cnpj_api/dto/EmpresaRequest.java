@@ -12,7 +12,7 @@ public record EmpresaRequest(
         @CNPJ(message = "cnpj inválido")
         String cnpj,
 
-        @NotBlank(message = "razaoSocial é obrigatória")
+        @NotEmpty(message = "razaoSocial é obrigatória")
         @Size(max = 200, message = "razaoSocial deve ter no máximo 200 caracteres")
         String razaoSocial,
 
@@ -20,6 +20,6 @@ public record EmpresaRequest(
         String nomeFantasia,
 
         @NotNull(message = "dataAbertura é obrigatória")
-        @PastOrPresent(message = "dataAbertura não pode ser futura")
+        @Past(message = "dataAbertura não pode ser futura")
         LocalDate dataAbertura
 ) {}

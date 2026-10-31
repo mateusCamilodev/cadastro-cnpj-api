@@ -25,7 +25,7 @@ public class ComparadorDocumento {
         return List.of(
                 verificar("ipr", s.getIpr(), d.getIpr(), ComparadorDocumento::texto),
 
-                verificar("nome", s.getNome(), d.getNome(), ComparadorDocumento::texto),
+                verificar("nome", s.getNome(), d.getNome(), ComparadorDocumento::digitos),
                 verificar("cpf", s.getCpf(), d.getCpf(), ComparadorDocumento::digitos),
                 verificar("email", s.getEmail(), d.getEmail(), ComparadorDocumento::texto),
                 verificar("telefone", s.getTelefone(), d.getTelefone(), ComparadorDocumento::digitos),

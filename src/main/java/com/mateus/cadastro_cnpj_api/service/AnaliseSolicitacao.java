@@ -23,12 +23,11 @@ public class AnaliseSolicitacao {
     public void analisar(Solicitacao solicitacao) {
         Set<String> camposReprovados = new TreeSet<>(); // TreeSet: sem repetição e em ordem alfabética
 
-        for (DocumentoSolicitacao documento : solicitacao.getDocumentos()) {
-            for (ResultadoCampo r : comparador.comparar(solicitacao, documento.getDadosExtraidos())) {
-                documento.adicionarValidacao(r.campo(), r.resultado(), r.motivo());
-                if (r.reprovado()) {
-                    camposReprovados.add(r.campo());
-                }
+        DocumentoSolicitacao documento = solicitacao.getDocumentos().get(0);
+        for (ResultadoCampo r : comparador.comparar(solicitacao, documento.getDadosExtraidos())) {
+            documento.adicionarValidacao(r.campo(), r.resultado(), r.motivo());
+            if (r.reprovado()) {
+                camposReprovados.add(r.campo());
             }
         }
 

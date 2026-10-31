@@ -15,7 +15,7 @@ public interface SolicitacaoRepository extends JpaRepository<Solicitacao, UUID> 
     // Busca a solicitação ativa (status fora da lista de inativos) daquele ipr
     Optional<Solicitacao> findByIprAndStatusNotIn(String ipr, Collection<StatusSolicitacao> status);
 
-    boolean existsByCpfAndCnpjAndStatusNotIn(String cpf, String cnpj, Collection<StatusSolicitacao> status);
+    boolean existsByCpfAndStatusNotIn(String cpf, Collection<StatusSolicitacao> status);
 
     // ===== Usados pelo agendador =====
     List<Solicitacao> findByStatusAndDataCriacaoBefore(StatusSolicitacao status, LocalDateTime limite);

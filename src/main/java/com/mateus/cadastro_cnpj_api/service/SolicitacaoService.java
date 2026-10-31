@@ -1,7 +1,6 @@
 package com.mateus.cadastro_cnpj_api.service;
 
 import com.mateus.cadastro_cnpj_api.dto.SolicitacaoRequest;
-import com.mateus.cadastro_cnpj_api.exception.ArquivosRepetidosException;
 import com.mateus.cadastro_cnpj_api.exception.CancelamentoNaoPermitidoException;
 import com.mateus.cadastro_cnpj_api.exception.DocumentoDivergenteException;
 import com.mateus.cadastro_cnpj_api.exception.DocumentoNaoPermitidoException;
@@ -18,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -38,16 +36,11 @@ public class SolicitacaoService {
     // ===== POST: criar =====
     @Transactional
     public ResultadoCriacao criar(SolicitacaoRequest request) {
-        // 0) Mesmo nome de arquivo declarado duas vezes → 400
-        if (new HashSet<>(request.arquivos()).size() != request.arquivos().size()) {
-            throw new ArquivosRepetidosException();
-        }
-
         // 1) Mesmo ipr ativo → idempotência (200)
         Optional<Solicitacao> existente = repository.findByIprAndStatusNotIn(
                 request.ipr(), StatusSolicitacao.INATIVOS);
         if (existente.isPresent()) {
-            return new ResultadoCriacao(existente.get(), false);
+            return new ResultadoCriacao(existente.get(), true);
         }
 
         // 2) CPF + CNPJ já têm solicitação ativa → 409
@@ -63,13 +56,12 @@ public class SolicitacaoService {
 
     // CPF + CNPJ já têm solicitação ativa (status fora de INATIVOS) → 409
     private void validarDuplicidade(SolicitacaoRequest request) {
-        boolean duplicada = repository.existsByCpfAndCnpjAndStatusNotIn(
+        boolean duplicada = repository.existsByCpfAndStatusNotIn(
                 request.pessoa().cpf(),
-                request.empresa().cnpj(),
                 StatusSolicitacao.INATIVOS
         );
         if (duplicada) {
-            throw new SolicitacaoDuplicadaException();
+            throw new SolicitacaoDuplicadaException(request.pessoa().cpf(), request.empresa().cnpj());
         }
     }
 
@@ -122,21 +114,16 @@ public class SolicitacaoService {
                     new CampoErro("nomeArquivo", "arquivo não declarado na criação da solicitação")));
         }
 
-        // 4) Arquivo declarado e já recebido antes → 409
-        if (declarado.get().isRecebido()) {
-            throw new DocumentoNaoPermitidoException("O arquivo " + nomeRecebido + " já foi recebido");
-        }
-
-        // 5) Lê o PDF (400 se inválido) e guarda o que foi extraído
+        // 4) Lê o PDF (400 se inválido) e guarda o que foi extraído
         Map<String, String> camposDocumento = leitorPdf.ler(arquivo);
-        declarado.get().marcarRecebido(DadosExtraidos.de(camposDocumento));
-
         int esperados = solicitacao.getDocumentos().size();
         long recebidos = solicitacao.getTotalRecebidos();
+        declarado.get().marcarRecebido(DadosExtraidos.de(camposDocumento));
+
         solicitacao.registrarEvento("Documento recebido. Enviados até o momento: " + recebidos + " de " + esperados);
 
-        // 6) Era o último → segue para processamento (a análise roda no agendador)
-        if (recebidos == esperados) {
+        // 5) Era o último → segue para processamento (a análise roda no agendador)
+        if (solicitacao.getTotalRecebidos() == esperados) {
             solicitacao.setStatus(StatusSolicitacao.EM_PROCESSAMENTO);
             solicitacao.registrarEvento("Todos os documentos recebidos. Processamento iniciado");
         }

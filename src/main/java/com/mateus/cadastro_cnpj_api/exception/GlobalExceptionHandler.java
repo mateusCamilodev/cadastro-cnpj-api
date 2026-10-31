@@ -6,8 +6,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -15,7 +13,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
-import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
@@ -39,15 +36,6 @@ public class GlobalExceptionHandler {
         return montar(HttpStatus.BAD_REQUEST, "Um ou mais campos estão inválidos", req, detalhes);
     }
 
-    // 400 - JSON mal formatado (vírgula faltando, data em formato errado, tipo errado)
-    @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ErroResponse> tratarJsonInvalido(HttpMessageNotReadableException ex,
-                                                           HttpServletRequest req) {
-        return montar(HttpStatus.BAD_REQUEST,
-                "Corpo da requisição ausente ou mal formatado. Verifique a sintaxe do JSON e se as datas estão no formato yyyy-MM-dd",
-                req, List.of());
-    }
-
     // 400 - Parâmetro da URL com tipo errado (ex.: id que não é UUID)
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErroResponse> tratarTipoParametro(MethodArgumentTypeMismatchException ex,
@@ -61,7 +49,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(SolicitacaoNaoEncontradaException.class)
     public ResponseEntity<ErroResponse> tratarNaoEncontrada(SolicitacaoNaoEncontradaException ex,
                                                             HttpServletRequest req) {
-        return montar(HttpStatus.NOT_FOUND, ex.getMessage(), req, List.of());
+        return montar(HttpStatus.BAD_REQUEST, ex.getMessage(), req, List.of());
     }
 
     // 404 - URL não existe (ex.: /solicitacao sem o "es")
@@ -93,15 +81,6 @@ public class GlobalExceptionHandler {
                                                           HttpServletRequest req) {
         return montar(HttpStatus.CONFLICT,
                 "Conflito de dados: já existe um registro com estes dados (ex.: ipr duplicado)",
-                req, List.of());
-    }
-
-    // 415 - Content-Type errado (ex.: enviou Text em vez de JSON)
-    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
-    public ResponseEntity<ErroResponse> tratarMediaType(HttpMediaTypeNotSupportedException ex,
-                                                        HttpServletRequest req) {
-        return montar(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
-                "Content-Type '" + ex.getContentType() + "' não suportado. Use application/json",
                 req, List.of());
     }
 
@@ -155,15 +134,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErroResponse> tratarArquivoInvalido(ArquivoInvalidoException ex,
                                                               HttpServletRequest req) {
         return montar(HttpStatus.BAD_REQUEST, ex.getMessage(), req, List.of());
-    }
-
-    // 400 - Não mandou o campo "arquivo" no form-data
-    @ExceptionHandler(MissingServletRequestPartException.class)
-    public ResponseEntity<ErroResponse> tratarArquivoAusente(MissingServletRequestPartException ex,
-                                                             HttpServletRequest req) {
-        return montar(HttpStatus.BAD_REQUEST,
-                "Envie o PDF no campo '" + ex.getRequestPartName() + "' (Body → form-data, tipo File)",
-                req, List.of());
     }
 
     // 400 - Requisição multipart mal formada

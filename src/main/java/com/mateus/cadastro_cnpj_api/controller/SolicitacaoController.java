@@ -32,7 +32,7 @@ public class SolicitacaoController {
         CriacaoResponse resposta = new CriacaoResponse(resultado.solicitacao().getId());
 
         if (resultado.nova()) {
-            URI location = URI.create("/solicitacoes/" + resposta.id());
+            URI location = URI.create("/solicitacao/" + resposta.id());
             return ResponseEntity.created(location).body(resposta);   // 201
         }
         return ResponseEntity.ok(resposta);                           // 200 (ipr repetido)

@@ -7,7 +7,7 @@ import java.time.LocalDate;
 
 public record PessoaRequest(
 
-        @NotBlank(message = "nome é obrigatório")
+        @NotNull(message = "nome é obrigatório")
         @Size(max = 150, message = "nome deve ter no máximo 150 caracteres")
         String nome,
 
@@ -16,12 +16,11 @@ public record PessoaRequest(
         @CPF(message = "cpf inválido")
         String cpf,
 
-        @NotBlank(message = "email é obrigatório")
         @Email(message = "email inválido")
         String email,
 
         @NotBlank(message = "telefone é obrigatório")
-        @Pattern(regexp = "\\d{10,11}", message = "telefone deve conter 10 ou 11 dígitos numéricos")
+        @Pattern(regexp = "\\d{9,11}", message = "telefone deve conter 10 ou 11 dígitos numéricos")
         String telefone,
 
         @NotNull(message = "dataNascimento é obrigatória")
