@@ -47,7 +47,7 @@ public class Solicitacao {
     @Column(length = 200)
     private String nomeFantasia;
 
-    @Column(nullable = false)
+    // Opcional (pode vir null no POST)
     private LocalDate dataAbertura;
 
     // ===== Controle do processamento =====

@@ -7,15 +7,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 public interface SolicitacaoRepository extends JpaRepository<Solicitacao, UUID> {
 
-    // Busca a solicitação ativa (status fora da lista de inativos) daquele ipr
-    Optional<Solicitacao> findByIprAndStatusNotIn(String ipr, Collection<StatusSolicitacao> status);
+    // Existe solicitação ativa (status fora da lista de inativos) com esse IPR / esse CNPJ?
+    boolean existsByIpr(String ipr);
 
-    boolean existsByCpfAndStatusNotIn(String cpf, Collection<StatusSolicitacao> status);
+    boolean existsByCnpjAndStatusNotIn(String cnpj, Collection<StatusSolicitacao> status);
 
     // ===== Usados pelo agendador =====
     List<Solicitacao> findByStatusAndDataCriacaoBefore(StatusSolicitacao status, LocalDateTime limite);

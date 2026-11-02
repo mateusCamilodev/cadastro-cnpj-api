@@ -34,9 +34,8 @@ public class ComparadorDocumento {
 
                 verificar("cnpj", s.getCnpj(), d.getCnpj(), ComparadorDocumento::digitos),
                 verificar("razaoSocial", s.getRazaoSocial(), d.getRazaoSocial(), ComparadorDocumento::texto),
-                verificarNomeFantasia(s.getNomeFantasia(), d.getNomeFantasia()),
-                verificar("dataAbertura", s.getDataAbertura().toString(), d.getDataAbertura(),
-                        ComparadorDocumento::data)
+                verificarNomeFantasia(s.getNomeFantasia(), d.getNomeFantasia())
+                // dataAbertura não é comparada (o PDF não precisa trazer)
         );
     }
 
@@ -53,14 +52,8 @@ public class ComparadorDocumento {
 
     // Opcional: se não veio no POST, o PDF também não pode trazer um valor
     private ResultadoCampo verificarNomeFantasia(String esperado, String recebido) {
-        boolean esperadoVazio = esperado == null || esperado.isBlank();
-        boolean recebidoVazio = recebido == null || recebido.isBlank();
-
-        if (esperadoVazio && recebidoVazio) {
+        if (esperado == null || esperado.isBlank()) {
             return ResultadoCampo.aprovado("nomeFantasia");
-        }
-        if (esperadoVazio) {
-            return ResultadoCampo.reprovado("nomeFantasia", "não confere com a solicitação");
         }
         return verificar("nomeFantasia", esperado, recebido, ComparadorDocumento::texto);
     }

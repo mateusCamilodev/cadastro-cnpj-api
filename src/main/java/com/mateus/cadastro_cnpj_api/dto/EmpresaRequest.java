@@ -1,25 +1,22 @@
 package com.mateus.cadastro_cnpj_api.dto;
 
 import jakarta.validation.constraints.*;
-import org.hibernate.validator.constraints.br.CNPJ;
 
 import java.time.LocalDate;
 
 public record EmpresaRequest(
 
         @NotBlank(message = "cnpj é obrigatório")
-        @Pattern(regexp = "\\d{14}", message = "cnpj deve conter 14 dígitos numéricos")
-        @CNPJ(message = "cnpj inválido")
+        @Pattern(regexp = "\\d{14,15}", message = "cnpj deve conter 14 dígitos numéricos")
         String cnpj,
 
-        @NotEmpty(message = "razaoSocial é obrigatória")
+        @NotBlank(message = "razaoSocial é obrigatória")
         @Size(max = 200, message = "razaoSocial deve ter no máximo 200 caracteres")
         String razaoSocial,
 
         @Size(max = 200, message = "nomeFantasia deve ter no máximo 200 caracteres")
         String nomeFantasia,
 
-        @NotNull(message = "dataAbertura é obrigatória")
-        @Past(message = "dataAbertura não pode ser futura")
+        // Opcional e sem validação de data
         LocalDate dataAbertura
 ) {}

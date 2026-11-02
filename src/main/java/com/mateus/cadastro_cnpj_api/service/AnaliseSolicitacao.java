@@ -37,7 +37,8 @@ public class AnaliseSolicitacao {
         } else {
             solicitacao.setStatus(StatusSolicitacao.REPROVADO);
             solicitacao.registrarEvento("Análise concluída: solicitação reprovada. Campos com divergência: "
-                    + String.join(", ", camposReprovados));
+                    + String.join(", ", camposReprovados)
+                    + (camposReprovados.contains("cpf") ? " (CPF informado: " + solicitacao.getCpf() + ")" : ""));
         }
     }
 }
