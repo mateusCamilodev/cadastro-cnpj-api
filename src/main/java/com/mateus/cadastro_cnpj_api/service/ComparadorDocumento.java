@@ -34,9 +34,8 @@ public class ComparadorDocumento {
 
                 verificar("cnpj", s.getCnpj(), d.getCnpj(), ComparadorDocumento::digitos),
                 verificar("razaoSocial", s.getRazaoSocial(), d.getRazaoSocial(), ComparadorDocumento::texto),
-                verificarNomeFantasia(s.getNomeFantasia(), d.getNomeFantasia()),
-                verificar("dataAbertura", s.getDataAbertura().toString(), d.getDataAbertura(),
-                        ComparadorDocumento::data)
+                verificarNomeFantasia(s.getNomeFantasia(), d.getNomeFantasia())
+                // dataAbertura não é comparada (o PDF não precisa trazer)
         );
     }
 

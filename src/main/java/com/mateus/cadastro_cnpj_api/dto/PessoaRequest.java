@@ -1,7 +1,6 @@
 package com.mateus.cadastro_cnpj_api.dto;
 
 import jakarta.validation.constraints.*;
-import org.hibernate.validator.constraints.br.CPF;
 
 import java.time.LocalDate;
 
@@ -13,7 +12,6 @@ public record PessoaRequest(
 
         @NotBlank(message = "cpf é obrigatório")
         @Pattern(regexp = "\\d{11}", message = "cpf deve conter 11 dígitos numéricos")
-        @CPF(message = "cpf inválido")
         String cpf,
 
         @NotBlank(message = "email é obrigatório")

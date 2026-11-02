@@ -37,39 +37,31 @@ public class SolicitacaoService {
 
     // ===== POST: criar =====
     @Transactional
-    public ResultadoCriacao criar(SolicitacaoRequest request) {
+    public Solicitacao criar(SolicitacaoRequest request) {
         // 0) Mesmo nome de arquivo declarado duas vezes → 400
         if (new HashSet<>(request.arquivos()).size() != request.arquivos().size()) {
             throw new ArquivosRepetidosException();
         }
 
-        // 1) Mesmo ipr ativo → idempotência (200)
-        Optional<Solicitacao> existente = repository.findByIprAndStatusNotIn(
-                request.ipr(), StatusSolicitacao.INATIVOS);
-        if (existente.isPresent()) {
-            return new ResultadoCriacao(existente.get(), false);
-        }
-
-        // 2) CPF + CNPJ já têm solicitação ativa → 409
+        // 1) IPR e CNPJ não podem repetir enquanto houver solicitação ativa com eles → 409
+        //    (CANCELADO/EXPIRADO/REPROVADO liberam; o CPF pode repetir à vontade)
         validarDuplicidade(request);
 
-        // 3) ipr novo ou só com registros inativos → cria novo registro, novo id (201)
+        // 2) Cria → 201
         Solicitacao nova = new Solicitacao();
         preencher(nova, request);
         request.arquivos().forEach(nova::adicionarDocumento);
         nova.registrarEvento("Solicitação criada");
-        return new ResultadoCriacao(repository.save(nova), true);
+        return repository.save(nova);
     }
 
-    // CPF + CNPJ já têm solicitação ativa (status fora de INATIVOS) → 409
+    // IPR ou CNPJ já em uso numa solicitação ativa (status fora de INATIVOS) → 409
     private void validarDuplicidade(SolicitacaoRequest request) {
-        boolean duplicada = repository.existsByCpfAndCnpjAndStatusNotIn(
-                request.pessoa().cpf(),
-                request.empresa().cnpj(),
-                StatusSolicitacao.INATIVOS
-        );
-        if (duplicada) {
-            throw new SolicitacaoDuplicadaException();
+        if (repository.existsByIprAndStatusNotIn(request.ipr(), StatusSolicitacao.INATIVOS)) {
+            throw new SolicitacaoDuplicadaException("Já existe uma solicitação ativa com este IPR");
+        }
+        if (repository.existsByCnpjAndStatusNotIn(request.empresa().cnpj(), StatusSolicitacao.INATIVOS)) {
+            throw new SolicitacaoDuplicadaException("Já existe uma solicitação ativa para este CNPJ");
         }
     }
 
@@ -97,8 +89,9 @@ public class SolicitacaoService {
     // ===== POST documento: enviar um PDF =====
     // Aqui só barra arquivo inválido ou não declarado. O conteúdo é validado depois, na análise (AnaliseSolicitacao).
     // noRollbackFor: no 422 a exceção sobe, mas o evento "rejeitado" do histórico continua salvo
+    // Devolve o nome do arquivo declarado que foi recebido
     @Transactional(noRollbackFor = DocumentoDivergenteException.class)
-    public Solicitacao enviarDocumento(UUID id, MultipartFile arquivo) {
+    public String enviarDocumento(UUID id, MultipartFile arquivo) {
         Solicitacao solicitacao = buscarPorId(id);
 
         // 1) Só aceita PDF em AGUARDANDO_DOCUMENTO → senão 409
@@ -140,7 +133,8 @@ public class SolicitacaoService {
             solicitacao.setStatus(StatusSolicitacao.EM_PROCESSAMENTO);
             solicitacao.registrarEvento("Todos os documentos recebidos. Processamento iniciado");
         }
-        return repository.save(solicitacao);
+        repository.save(solicitacao);
+        return declarado.get().getNomeArquivo();
     }
 
     // Alguns clientes mandam o caminho junto ("C:\pasta\doc.pdf"): fica só o nome

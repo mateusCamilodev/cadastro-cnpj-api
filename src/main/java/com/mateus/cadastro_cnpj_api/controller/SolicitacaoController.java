@@ -1,10 +1,10 @@
 package com.mateus.cadastro_cnpj_api.controller;
 
 import com.mateus.cadastro_cnpj_api.dto.CriacaoResponse;
+import com.mateus.cadastro_cnpj_api.dto.MensagemResponse;
 import com.mateus.cadastro_cnpj_api.dto.SolicitacaoRequest;
 import com.mateus.cadastro_cnpj_api.dto.SolicitacaoResponse;
 import com.mateus.cadastro_cnpj_api.model.Solicitacao;
-import com.mateus.cadastro_cnpj_api.service.ResultadoCriacao;
 import com.mateus.cadastro_cnpj_api.service.SolicitacaoService;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
@@ -28,14 +28,9 @@ public class SolicitacaoController {
     // POST /solicitacoes
     @PostMapping
     public ResponseEntity<CriacaoResponse> criar(@RequestBody @Valid SolicitacaoRequest request) {
-        ResultadoCriacao resultado = service.criar(request);
-        CriacaoResponse resposta = new CriacaoResponse(resultado.solicitacao().getId());
-
-        if (resultado.nova()) {
-            URI location = URI.create("/solicitacoes/" + resposta.id());
-            return ResponseEntity.created(location).body(resposta);   // 201
-        }
-        return ResponseEntity.ok(resposta);                           // 200 (ipr repetido)
+        Solicitacao solicitacao = service.criar(request);
+        URI location = URI.create("/solicitacoes/" + solicitacao.getId());
+        return ResponseEntity.created(location).body(new CriacaoResponse(solicitacao.getId()));   // 201
     }
 
     // GET /solicitacoes/{id}
@@ -54,9 +49,9 @@ public class SolicitacaoController {
 
     // POST /solicitacoes/{id}/documento  (form-data, campo "arquivo" com o PDF)
     @PostMapping(value = "/{id}/documento", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<SolicitacaoResponse> enviarDocumento(@PathVariable UUID id,
-                                                               @RequestParam("arquivo") MultipartFile arquivo) {
-        Solicitacao solicitacao = service.enviarDocumento(id, arquivo);
-        return ResponseEntity.ok(SolicitacaoResponse.de(solicitacao));
+    public ResponseEntity<MensagemResponse> enviarDocumento(@PathVariable UUID id,
+                                                            @RequestParam("arquivo") MultipartFile arquivo) {
+        String nomeArquivo = service.enviarDocumento(id, arquivo);
+        return ResponseEntity.ok(new MensagemResponse("Arquivo " + nomeArquivo + " enviado"));
     }
 }

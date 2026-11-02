@@ -54,7 +54,6 @@ public class ProcessamentoAgendado {
             s.setStatus(StatusSolicitacao.AGUARDANDO_DOCUMENTO);
             s.setPrazoDocumento(agora.plus(prazoDocumento));
             s.registrarEvento("Aguardando documentos até " + s.getPrazoDocumento().format(HORA)
-                    + ". Documentos declarados: " + s.getDocumentos().size()
                     + ". Enviados até o momento: " + s.getTotalRecebidos() + " de " + s.getDocumentos().size());
             log.info("Solicitação {} → AGUARDANDO_DOCUMENTO (prazo até {})", s.getId(), s.getPrazoDocumento());
         }
