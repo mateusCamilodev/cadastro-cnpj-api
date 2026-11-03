@@ -23,7 +23,7 @@ public class ComparadorDocumento {
         DadosExtraidos d = documento != null ? documento : DadosExtraidos.de(Map.of());
 
         return List.of(
-                verificar("ipr", s.getIpr(), d.getIpr(), ComparadorDocumento::texto),
+                verificar("solicitacao", s.getSolicitacao(), d.getSolicitacao(), ComparadorDocumento::texto),
 
                 verificar("nome", s.getNome(), d.getNome(), ComparadorDocumento::texto),
                 verificar("cpf", s.getCpf(), d.getCpf(), ComparadorDocumento::digitos),

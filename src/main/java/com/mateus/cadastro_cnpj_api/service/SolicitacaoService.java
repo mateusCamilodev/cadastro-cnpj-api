@@ -43,7 +43,7 @@ public class SolicitacaoService {
             throw new ArquivosRepetidosException();
         }
 
-        // 1) IPR e CNPJ não podem repetir enquanto houver solicitação ativa com eles → 409
+        // 1) Número da solicitação e CNPJ não podem repetir enquanto houver solicitação ativa com eles → 409
         //    (CANCELADO/EXPIRADO/REPROVADO liberam; o CPF pode repetir à vontade)
         validarDuplicidade(request);
 
@@ -55,10 +55,10 @@ public class SolicitacaoService {
         return repository.save(nova);
     }
 
-    // IPR ou CNPJ já em uso numa solicitação ativa (status fora de INATIVOS) → 409
+    // Número da solicitação ou CNPJ já em uso numa solicitação ativa (status fora de INATIVOS) → 409
     private void validarDuplicidade(SolicitacaoRequest request) {
-        if (repository.existsByIprAndStatusNotIn(request.ipr(), StatusSolicitacao.INATIVOS)) {
-            throw new SolicitacaoDuplicadaException("Já existe uma solicitação ativa com este IPR");
+        if (repository.existsBySolicitacaoAndStatusNotIn(request.solicitacao(), StatusSolicitacao.INATIVOS)) {
+            throw new SolicitacaoDuplicadaException("Já existe uma solicitação ativa com este número de solicitação");
         }
         if (repository.existsByCnpjAndStatusNotIn(request.empresa().cnpj(), StatusSolicitacao.INATIVOS)) {
             throw new SolicitacaoDuplicadaException("Já existe uma solicitação ativa para este CNPJ");
@@ -70,6 +70,14 @@ public class SolicitacaoService {
     public Solicitacao buscarPorId(UUID id) {
         return repository.findById(id)
                 .orElseThrow(() -> new SolicitacaoNaoEncontradaException(id));
+    }
+
+    // ===== GET: listar (status opcional) =====
+    @Transactional(readOnly = true)
+    public List<Solicitacao> listar(StatusSolicitacao status) {
+        return status == null
+                ? repository.findAllByOrderByDataCriacaoDesc()
+                : repository.findByStatusOrderByDataCriacaoDesc(status);
     }
 
     // ===== PATCH: cancelar =====
@@ -148,7 +156,7 @@ public class SolicitacaoService {
 
     // ===== Copia DTO -> Entidade =====
     private void preencher(Solicitacao s, SolicitacaoRequest request) {
-        s.setIpr(request.ipr());
+        s.setSolicitacao(request.solicitacao());
 
         s.setNome(request.pessoa().nome());
         s.setCpf(request.pessoa().cpf());

@@ -22,6 +22,7 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
@@ -67,11 +68,18 @@ public class GlobalExceptionHandler {
                 "Corpo da requisição ausente ou mal formatado. Verifique a sintaxe do JSON e se as datas estão no formato yyyy-MM-dd");
     }
 
-    // 400 - Parâmetro da URL com tipo errado (ex.: id que não é UUID)
+    // 400 - Parâmetro da URL com tipo errado (ex.: id que não é UUID, ?status= com valor que não existe)
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErroResponse> tratarTipoParametro(MethodArgumentTypeMismatchException ex) {
-        String mensagem = "Parâmetro '" + ex.getName() + "' com valor '" + ex.getValue()
-                + "' é inválido. O formato esperado é UUID (ex.: 3f8a2c1e-5b7d-4e9a-9c1f-2d6e8b4a7c10)";
+        String esperado;
+        Class<?> tipo = ex.getRequiredType();
+        if (tipo != null && tipo.isEnum()) {
+            esperado = "Valores aceitos: " + String.join(", ",
+                    Arrays.stream(tipo.getEnumConstants()).map(Object::toString).toList());
+        } else {
+            esperado = "O formato esperado é UUID (ex.: 3f8a2c1e-5b7d-4e9a-9c1f-2d6e8b4a7c10)";
+        }
+        String mensagem = "Parâmetro '" + ex.getName() + "' com valor '" + ex.getValue() + "' é inválido. " + esperado;
         return montar(HttpStatus.BAD_REQUEST, mensagem);
     }
 
@@ -101,16 +109,16 @@ public class GlobalExceptionHandler {
         return montar(HttpStatus.CONFLICT, ex.getMessage());
     }
 
-    // 409 - IPR ou CNPJ já em uso numa solicitação ativa
+    // 409 - Número da solicitação ou CNPJ já em uso numa solicitação ativa
     @ExceptionHandler(SolicitacaoDuplicadaException.class)
     public ResponseEntity<ErroResponse> tratarDuplicada(SolicitacaoDuplicadaException ex) {
         return montar(HttpStatus.CONFLICT, ex.getMessage());
     }
 
-    // 409 - Violação no banco (ex.: dois POSTs simultâneos com o mesmo ipr)
+    // 409 - Violação no banco (ex.: dois POSTs simultâneos com o mesmo número de solicitação)
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErroResponse> tratarIntegridade(DataIntegrityViolationException ex) {
-        return montar(HttpStatus.CONFLICT, "Conflito de dados: já existe um registro com estes dados (ex.: ipr duplicado)");
+        return montar(HttpStatus.CONFLICT, "Conflito de dados: já existe um registro com estes dados (ex.: número de solicitação duplicado)");
     }
 
     // 415 - Content-Type errado (ex.: enviou Text em vez de JSON)
@@ -185,7 +193,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(corpo);
     }
 
-    // "pessoa.nome" -> "nome" | "empresa.cnpj" -> "cnpj" | "ipr" -> "ipr"
+    // "pessoa.nome" -> "nome" | "empresa.cnpj" -> "cnpj" | "solicitacao" -> "solicitacao"
     private String nomeSimples(String campo) {
         int ultimoPonto = campo.lastIndexOf('.');
         return ultimoPonto >= 0 ? campo.substring(ultimoPonto + 1) : campo;

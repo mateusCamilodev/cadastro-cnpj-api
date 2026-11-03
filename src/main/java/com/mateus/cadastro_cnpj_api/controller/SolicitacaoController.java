@@ -2,9 +2,11 @@ package com.mateus.cadastro_cnpj_api.controller;
 
 import com.mateus.cadastro_cnpj_api.dto.CriacaoResponse;
 import com.mateus.cadastro_cnpj_api.dto.MensagemResponse;
+import com.mateus.cadastro_cnpj_api.dto.ResumoSolicitacaoResponse;
 import com.mateus.cadastro_cnpj_api.dto.SolicitacaoRequest;
 import com.mateus.cadastro_cnpj_api.dto.SolicitacaoResponse;
 import com.mateus.cadastro_cnpj_api.model.Solicitacao;
+import com.mateus.cadastro_cnpj_api.model.StatusSolicitacao;
 import com.mateus.cadastro_cnpj_api.service.SolicitacaoService;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -31,6 +34,16 @@ public class SolicitacaoController {
         Solicitacao solicitacao = service.criar(request);
         URI location = URI.create("/solicitacoes/" + solicitacao.getId());
         return ResponseEntity.created(location).body(new CriacaoResponse(solicitacao.getId()));   // 201
+    }
+
+    // GET /solicitacoes?status=AGUARDANDO_DOCUMENTO  (status é opcional)
+    @GetMapping
+    public ResponseEntity<List<ResumoSolicitacaoResponse>> listar(
+            @RequestParam(required = false) StatusSolicitacao status) {
+        List<ResumoSolicitacaoResponse> lista = service.listar(status).stream()
+                .map(ResumoSolicitacaoResponse::de)
+                .toList();
+        return ResponseEntity.ok(lista);
     }
 
     // GET /solicitacoes/{id}

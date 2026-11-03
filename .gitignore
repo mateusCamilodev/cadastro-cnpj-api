@@ -34,3 +34,4 @@ build/
 
 ### Configuração local (usuários, senhas, segredos) ###
 application-local.properties
+FLUXO.md

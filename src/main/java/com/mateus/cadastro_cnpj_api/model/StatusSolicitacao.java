@@ -11,7 +11,7 @@ public enum StatusSolicitacao {
     CANCELADO,
     EXPIRADO;
 
-    // Status que não contam como "ativa": não bloqueiam CPF+CNPJ e liberam o ipr para ser criado de novo
+    // Status que não contam como "ativa": não bloqueiam CPF+CNPJ e liberam o número da solicitação para ser usado de novo
     public static final List<StatusSolicitacao> INATIVOS = List.of(CANCELADO, EXPIRADO, REPROVADO);
 
     // Status em que o PATCH de cancelamento é permitido

@@ -10,8 +10,8 @@ import java.util.Map;
 @Embeddable
 public class DadosExtraidos {
 
-    @Column(name = "pdf_ipr")
-    private String ipr;
+    @Column(name = "pdf_solicitacao")
+    private String solicitacao;
 
     @Column(name = "pdf_nome")
     private String nome;
@@ -46,7 +46,7 @@ public class DadosExtraidos {
     // Recebe o Map do LeitorDocumentoPdf (chaves já normalizadas: "razaosocial", "datadenascimento"...)
     public static DadosExtraidos de(Map<String, String> campos) {
         DadosExtraidos d = new DadosExtraidos();
-        d.ipr = campos.get("ipr");
+        d.solicitacao = campos.get("solicitacao");
         d.nome = campos.get("nome");
         d.cpf = campos.get("cpf");
         d.email = campos.get("email");
@@ -60,7 +60,7 @@ public class DadosExtraidos {
     }
 
     // ===== Getters =====
-    public String getIpr() { return ipr; }
+    public String getSolicitacao() { return solicitacao; }
     public String getNome() { return nome; }
     public String getCpf() { return cpf; }
     public String getEmail() { return email; }

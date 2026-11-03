@@ -17,9 +17,9 @@ public class Solicitacao {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    // Não é unique: um ipr cancelado pode ser criado de novo (novo registro, o cancelado fica como histórico)
+    // Não é unique: uma solicitação cancelada pode ser criada de novo com o mesmo número (novo registro, o cancelado fica como histórico)
     @Column(nullable = false, length = 50)
-    private String ipr;
+    private String solicitacao;
 
     // ===== Dados da pessoa =====
     @Column(nullable = false, length = 150)
@@ -114,8 +114,8 @@ public class Solicitacao {
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
 
-    public String getIpr() { return ipr; }
-    public void setIpr(String ipr) { this.ipr = ipr; }
+    public String getSolicitacao() { return solicitacao; }
+    public void setSolicitacao(String solicitacao) { this.solicitacao = solicitacao; }
 
 
     public String getNome() { return nome; }
