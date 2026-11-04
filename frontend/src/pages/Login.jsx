@@ -34,7 +34,7 @@ export default function Login() {
       <div className="login-cartao">
         {/* Lado esquerdo: apresentação do portal */}
         <aside className="login-vitrine">
-          <Marca tamanho={52} />
+          <Marca tamanho={60} />
           <div className="login-vitrine-texto">
             <h2>Do envio ao carimbo, cada solicitação em um só lugar.</h2>
             <ul className="login-recursos">

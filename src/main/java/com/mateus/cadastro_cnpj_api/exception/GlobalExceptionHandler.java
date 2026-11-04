@@ -8,6 +8,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
@@ -20,6 +21,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import tools.jackson.databind.exc.UnrecognizedPropertyException;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -50,6 +52,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MensagemResponse(ex.getMessage()));
     }
 
+    // QA Center: erros de negócio do módulo com o status que a própria exceção carrega
+    @ExceptionHandler(com.mateus.cadastro_cnpj_api.qa.QaException.class)
+    public ResponseEntity<ErroResponse> tratarQa(com.mateus.cadastro_cnpj_api.qa.QaException ex) {
+        return montar(ex.getStatus(), ex.getMessage());
+    }
+
+    // 403 - Token válido, mas sem a permissão exigida (ex.: QA Center sem "qa.view")
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErroResponse> tratarSemPermissao(AccessDeniedException ex) {
+        return montar(HttpStatus.FORBIDDEN, "Sem permissão para esta operação");
+    }
+
     // 401 - Rota protegida sem token, ou com token inválido/expirado (vem do AuthenticationEntryPoint)
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<MensagemResponse> tratarNaoAutenticado(AuthenticationException ex) {
@@ -64,6 +78,10 @@ public class GlobalExceptionHandler {
     // 400 - JSON mal formatado (vírgula faltando, data em formato errado, tipo errado)
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErroResponse> tratarJsonInvalido(HttpMessageNotReadableException ex) {
+        // Campo que a API não conhece (ex.: "ipr", renomeado para "solicitacao") → diz qual foi
+        if (ex.getMostSpecificCause() instanceof UnrecognizedPropertyException desconhecido) {
+            return montar(HttpStatus.BAD_REQUEST, "Campo não reconhecido: " + desconhecido.getPropertyName());
+        }
         return montar(HttpStatus.BAD_REQUEST,
                 "Corpo da requisição ausente ou mal formatado. Verifique a sintaxe do JSON e se as datas estão no formato yyyy-MM-dd");
     }

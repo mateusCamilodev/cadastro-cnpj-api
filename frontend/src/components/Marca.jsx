@@ -1,17 +1,9 @@
 // Logotipo animado em pixel art: o boneco carimba uma folha.
 // A cada ciclo de 6s ele carimba duas vezes: primeiro APROVA (✓ verde), depois REPROVA (✗ vermelho).
 // A animação é toda em CSS (classes logo-*, em styles.css) e para em "prefers-reduced-motion".
-
-const COR = {
-  corpo: '#d97757',
-  olho: '#141414',
-  folha: '#e8f4f8',
-  linha: '#9aabb3',
-  cabo: '#c4cdd3',
-  tinta: '#4d8dff',
-  ok: '#5ee08f',
-  erro: '#ff6b7a',
-}
+// No cabeçalho ela fica parada no quadro do ✓ e volta a carimbar ao passar o mouse.
+import { PIXEL as COR } from '../pixel.js'
+import logoCarimbo from '../assets/logo-carimbo.png'
 
 // [x, y] de cada "pixel" (1 unidade do viewBox)
 const CORPO = [
@@ -55,15 +47,15 @@ export function SimboloMarca({ tamanho = 32 }) {
   )
 }
 
-// Símbolo + nome; o subtítulo fica embaixo do nome, os dois alinhados ao centro do boneco
-export default function Marca({ tamanho = 44 }) {
+// Logo oficial (ilustração do boneco carimbando) + nome; o subtítulo fica embaixo do nome.
+// A versão em pixel art animada (SimboloMarca, acima) continua nos estados vazios.
+export default function Marca({ tamanho = 40 }) {
   return (
     <div className="marca" aria-label="Carimbô — Portal de solicitações">
-      <SimboloMarca tamanho={tamanho} />
+      <img className="marca-logo" src={logoCarimbo} alt="" height={tamanho} width={Math.round(tamanho * 267 / 192)} />
       <span className="marca-texto">
         <span className="marca-nome">
           Carimbô
-          <svg className="marca-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 7" /></svg>
         </span>
         <span className="marca-sub">Portal de solicitações</span>
       </span>

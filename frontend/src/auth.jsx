@@ -41,11 +41,33 @@ export function AuthProvider({ children }) {
     return () => clearTimeout(t)
   }, [sessao, sair])
 
+  // Permissões vêm da claim "scope" do JWT (ex.: "qa.view qa.execute"). Servem só para mostrar/esconder
+  // botões e menus — quem decide de verdade é o backend (403).
+  const permissoes = permissoesDoToken(sessao?.token)
+  const pode = useCallback((permissao) => permissoes.includes(permissao), [permissoes])
+
   return (
-    <AuthContext.Provider value={{ sessao, entrar, sair, expirou }}>
+    <AuthContext.Provider value={{ sessao, entrar, sair, expirou, pode }}>
       {children}
     </AuthContext.Provider>
   )
+}
+
+function permissoesDoToken(token) {
+  if (!token) return []
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+    return typeof payload.scope === 'string' ? payload.scope.split(' ').filter(Boolean) : []
+  } catch {
+    return []
+  }
+}
+
+// Exige uma permissão para abrir a rota (sem ela, volta para a lista de solicitações)
+export function ComPermissao({ permissao, children }) {
+  const { pode } = useAuth()
+  if (!pode(permissao)) return <Navigate to="/solicitacoes" replace />
+  return children
 }
 
 export function useAuth() {

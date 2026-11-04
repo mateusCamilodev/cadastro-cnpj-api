@@ -68,10 +68,45 @@ Todos os endpoints de `/solicitacoes` exigem o header `Authorization: Bearer <to
 }
 ```
 
+## QA Center
+
+Módulo para configurar, executar, acompanhar ao vivo e analisar testes automatizados da própria API (menu **QA Center** no front).
+Os testes chamam a API **de verdade** em segundo plano; nenhum resultado é simulado.
+
+**Permissões** (claim `scope` do JWT, definidas por usuário em `auth.usuarios[N].permissoes` no arquivo local). Sem elas, o backend responde 403:
+
+| Permissão | Libera |
+|---|---|
+| `qa.view` | catálogo, execuções e detalhes (`GET /qa/**`) |
+| `qa.execute` | criar e reexecutar execuções |
+| `qa.cancel` | cancelar execução |
+| `qa.reports.view` | relatórios, comparação e CSV |
+
+O executor usa uma conta de teste própria (`qa.conta-teste.*` no arquivo local) e só chama os endpoints do catálogo, na URL base do
+ambiente escolhido. Nenhuma URL vem do navegador. Ambientes: **Desenvolvimento** (a própria API) e **Homologação** (`qa.ambientes.homologacao.url`,
+aparece como indisponível se estiver desligada). Não existe opção de produção. As solicitações criadas pelos testes começam com `QA-`.
+
+| Ação | Método | URL |
+|---|---|---|
+| Catálogo | GET | `/qa/endpoints`, `/qa/cenarios`, `/qa/categorias`, `/qa/ambientes` |
+| Nova execução (202) | POST | `/qa/execucoes` `{ "ambiente", "endpointIds", "categorias" }` ou `{ "ambiente", "cenarioIds" }` |
+| Histórico | GET | `/qa/execucoes?status=&ambiente=&usuario=&de=&ate=&busca=&pagina=&tamanho=` |
+| Detalhe / resultados (com evidências mascaradas) | GET | `/qa/execucoes/{id}`, `/qa/execucoes/{id}/resultados` |
+| Tempo real (SSE) | GET | `/qa/execucoes/{id}/eventos` |
+| Cancelar / reexecutar | POST | `/qa/execucoes/{id}/cancelar`, `/qa/execucoes/{id}/reexecutar` |
+| Relatórios | GET | `/qa/relatorios/resumo`, `tendencias`, `falhas`, `comparacao?a=&b=`, `exportar.csv` |
+
+Limites: 1 execução ativa por usuário e 2 no total (429), a mesma seleção em andamento é recusada (409) e cada requisição e cada
+execução têm tempo máximo (`qa.limites.*`). Tokens, senhas, CPF, CNPJ, e-mails e telefones são mascarados antes de serem gravados.
+O histórico fica no H2 em memória.
+
+Testes do módulo: `mvnw.cmd test` (sobem a aplicação numa porta aleatória e executam cenários reais contra ela).
+
 ## Estrutura
 
 ```
 src/main/java/.../
+  qa/           QA Center (catálogo, cenários, executor, tempo real, relatórios)
   config/       segurança e propriedades
   controller/   endpoints REST
   dto/          corpos de requisição e resposta

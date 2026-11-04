@@ -2,7 +2,9 @@
 // humor="feliz"  → braços pra cima, bochechas e brilhos (aprovado)
 // humor="triste" → braços caídos, olhos baixos, lágrima e nuvem de chuva (reprovado)
 
-const CORES = { o: '#d97757', k: '#141414', r: '#f2a08a', t: '#7cd3ff' }
+import { PIXEL } from '../pixel.js'
+
+const CORES = { o: PIXEL.corpo, k: PIXEL.olho, r: PIXEL.bochecha, t: PIXEL.lagrima }
 const PX = 10            // tamanho de cada "pixel" no desenho
 const X0 = 30, Y0 = 44   // onde o boneco começa dentro do quadro
 
@@ -44,14 +46,14 @@ export default function Mascote({ humor }) {
          role="img" aria-label={feliz ? 'Mascote comemorando' : 'Mascote triste'}>
       {feliz ? (
         <>
-          <Brilho x={14} y={22} cor="#4d8dff" />
-          <Brilho x={186} y={14} cor="#f5c84a" />
-          <Brilho x={192} y={70} cor="#4d8dff" />
+          <Brilho x={14} y={22} cor={PIXEL.tinta} />
+          <Brilho x={186} y={14} cor={PIXEL.brilho} />
+          <Brilho x={192} y={70} cor={PIXEL.tinta} />
         </>
       ) : (
         <g className="mascote-nuvem">
-          <g fill="#4b5560"><rect x="78" y="10" width="52" height="10" /><rect x="88" y="0" width="32" height="10" /><rect x="68" y="20" width="72" height="10" /></g>
-          <g fill="#7cd3ff"><rect className="gota" x="82" y="36" width="4" height="8" /><rect className="gota gota-2" x="102" y="34" width="4" height="8" /><rect className="gota gota-3" x="122" y="36" width="4" height="8" /></g>
+          <g fill={PIXEL.nuvem}><rect x="78" y="10" width="52" height="10" /><rect x="88" y="0" width="32" height="10" /><rect x="68" y="20" width="72" height="10" /></g>
+          <g fill={PIXEL.lagrima}><rect className="gota" x="82" y="36" width="4" height="8" /><rect className="gota gota-2" x="102" y="34" width="4" height="8" /><rect className="gota gota-3" x="122" y="36" width="4" height="8" /></g>
         </g>
       )}
       <g className="mascote-corpo">

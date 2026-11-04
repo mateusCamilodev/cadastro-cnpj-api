@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api.js'
-import { dataHora, hora, tempoRestante } from '../format.js'
+import { dataHora, tempoAtras } from '../format.js'
+import { useAgora, useFocoDeLuz } from '../hooks.js'
+import Prazo from '../components/Prazo.jsx'
+import ProgressoDocumentos from '../components/ProgressoDocumentos.jsx'
+import Carregando from '../components/Carregando.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
-import Cabecalho from '../components/Cabecalho.jsx'
 import Icone from '../components/Icone.jsx'
 import { SimboloMarca } from '../components/Marca.jsx'
 import MascoteDuvida from '../components/MascoteDuvida.jsx'
+import logoCarimbo from '../assets/logo-carimbo.png'
 
 // Abas de filtro: cada uma junta um ou mais status
 const ABAS = [
@@ -16,14 +20,6 @@ const ABAS = [
   { chave: 'reprovadas', label: 'Reprovadas', status: ['REPROVADO'] },
   { chave: 'encerradas', label: 'Encerradas', status: ['CANCELADO', 'EXPIRADO'] },
 ]
-
-function tempoAtras(iso, agora) {
-  const s = Math.max(0, (agora - new Date(iso).getTime()) / 1000)
-  if (s < 60) return 'agora mesmo'
-  if (s < 3600) return `há ${Math.floor(s / 60)} min`
-  if (s < 86400) return `há ${Math.floor(s / 3600)} h`
-  return `há ${Math.floor(s / 86400)} d`
-}
 
 export default function Lista() {
   const navegar = useNavigate()
@@ -35,8 +31,8 @@ export default function Lista() {
   const [busca, setBusca] = useState('')
   const [itens, setItens] = useState(null)
   const [erro, setErro] = useState('')
-  const [atualizadoEm, setAtualizadoEm] = useState(null)
-  const [agora, setAgora] = useState(Date.now())
+  const agora = useAgora(30000)   // "há X min"; o prazo tem o próprio relógio de 1s
+  const focoDeLuz = useFocoDeLuz()  // brilho do título que segue o mouse
 
   // Busca todas as solicitações a cada 5s (o status muda sozinho no backend); o filtro é feito aqui
   useEffect(() => {
@@ -44,7 +40,7 @@ export default function Lista() {
     async function carregar() {
       try {
         const lista = await api.listar()
-        if (ativo) { setItens(lista); setErro(''); setAtualizadoEm(new Date().toISOString()) }
+        if (ativo) { setItens(lista); setErro('') }
       } catch (e) {
         if (ativo) setErro(e.message)
       }
@@ -54,15 +50,13 @@ export default function Lista() {
     return () => { ativo = false; clearInterval(t) }
   }, [])
 
-  // Relógio para a contagem regressiva do prazo e o "há X min"
-  useEffect(() => {
-    const t = setInterval(() => setAgora(Date.now()), 1000)
-    return () => clearInterval(t)
-  }, [])
-
   const contagem = useMemo(() => Object.fromEntries(ABAS.map((a) => [
     a.chave, (itens || []).filter((s) => !a.status || a.status.includes(s.status)).length,
   ])), [itens])
+
+  // Para o aviso do título: quem ainda espera documento e o prazo que vence primeiro
+  const aguardandoEnvio = useMemo(() => (itens || []).filter((s) => s.status === 'AGUARDANDO_DOCUMENTO' && s.prazoDocumento), [itens])
+  const proximoPrazo = useMemo(() => aguardandoEnvio.map((s) => s.prazoDocumento).sort()[0], [aguardandoEnvio])
 
   const filtrados = useMemo(() => {
     const termo = busca.trim().toLowerCase()
@@ -73,12 +67,26 @@ export default function Lista() {
 
   return (
     <div className="pagina">
-      <Cabecalho titulo="Solicitações" descricao="Acompanhe cada solicitação, do envio dos documentos ao resultado da análise.">
-        <span className={`ao-vivo${erro ? ' com-erro' : ''}`}>
-          <span className="ao-vivo-ponto" />
-          {erro ? 'Sem conexão com a API' : atualizadoEm ? <>Ao vivo · atualizado às <span className="tabular">{hora(atualizadoEm)}</span></> : 'Conectando…'}
-        </span>
-      </Cabecalho>
+      {/* Título centralizado, sem caixa: selo da marca, título, descrição e o que precisa de atenção agora */}
+      <header className="titulo-pagina" {...focoDeLuz}>
+        <span className="titulo-pagina-selo"><img src={logoCarimbo} alt="" height="18" width="25" />Portal Carimbô</span>
+        <h1 data-luz>Solicitações</h1>
+        <p>Acompanhe cada solicitação, do envio dos documentos ao resultado da análise.</p>
+        {itens && (aguardandoEnvio.length > 0 ? (
+          <button type="button" className="titulo-pagina-aviso" onClick={() => escolherAba('andamento')}
+                  title="Ver as solicitações em andamento">
+            <span className="titulo-pagina-ponto" aria-hidden="true" />
+            <span><strong className="tabular">{aguardandoEnvio.length}</strong> {aguardandoEnvio.length === 1 ? 'aguardando documento' : 'aguardando documentos'}</span>
+            <span className="titulo-pagina-sep" aria-hidden="true" />
+            <span>próximo prazo</span>
+            <Prazo ate={proximoPrazo} />
+          </button>
+        ) : (
+          <span className="titulo-pagina-aviso titulo-pagina-livre">
+            <Icone nome="check" tamanho={15} />Nenhum documento pendente
+          </span>
+        ))}
+      </header>
 
       <section className="caixa-lista">
         {/* Abas com contagem (esquerda) + busca (direita) na mesma faixa */}
@@ -101,7 +109,7 @@ export default function Lista() {
 
         {erro && <div className="mensagem mensagem-erro margem"><Icone nome="alerta" />{erro}</div>}
 
-        {itens === null && !erro && <div className="vazio">Carregando…</div>}
+        {itens === null && !erro && <div className="vazio"><Carregando texto="Carregando solicitações…" /></div>}
 
         {itens && filtrados.length === 0 && (
           <div className="vazio">
@@ -126,30 +134,24 @@ export default function Lista() {
               </thead>
               <tbody>
                 {filtrados.map((s) => {
-                  const pct = s.documentosEsperados ? (s.documentosRecebidos / s.documentosEsperados) * 100 : 0
                   const aguardando = s.status === 'AGUARDANDO_DOCUMENTO' && s.prazoDocumento
                   return (
                     <tr key={s.id} onClick={() => navegar(`/solicitacoes/${s.id}`)}>
-                      <td>
+                      <td data-rotulo="Solicitação">
                         <Link to={`/solicitacoes/${s.id}`} className="numero-solicitacao" onClick={(e) => e.stopPropagation()}>{s.solicitacao}</Link>
                         <span className="id-curto mono" title={s.id}>#{s.id.slice(0, 8)}</span>
                       </td>
-                      <td><StatusBadge status={s.status} /></td>
-                      <td>
-                        <span className="docs">
-                          <span className="docs-barra"><span style={{ width: `${pct}%` }} className={pct === 100 ? 'completo' : ''} /></span>
-                          <span className="tabular">{s.documentosRecebidos}/{s.documentosEsperados}</span>
-                        </span>
-                      </td>
-                      <td>
+                      <td data-rotulo="Status"><StatusBadge status={s.status} /></td>
+                      <td data-rotulo="Documentos"><ProgressoDocumentos recebidos={s.documentosRecebidos} esperados={s.documentosEsperados} /></td>
+                      <td data-rotulo="Criada">
                         <span className="data-dupla">
                           <span>{tempoAtras(s.dataCriacao, agora)}</span>
                           <small className="tabular">{dataHora(s.dataCriacao)}</small>
                         </span>
                       </td>
-                      <td>
+                      <td data-rotulo="Prazo">
                         {aguardando
-                          ? <span className="prazo-contagem tabular"><Icone nome="relogio" tamanho={14} />{tempoRestante(s.prazoDocumento, agora)}</span>
+                          ? <Prazo ate={s.prazoDocumento} />
                           : <span className="suave">—</span>}
                       </td>
                       <td className="seta-linha"><Icone nome="seta" tamanho={16} /></td>

@@ -8,6 +8,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 // Confere e-mail + senha contra os usuários fixos (application.properties) e, se baterem, gera o token
@@ -20,6 +21,9 @@ public class AuthService {
     // e-mail em minúsculas → hash BCrypt da senha (a senha em texto puro não fica guardada no serviço)
     private final Map<String, String> hashPorEmail = new HashMap<>();
 
+    // e-mail em minúsculas → permissões do usuário (ex.: qa.view); vão para o token
+    private final Map<String, List<String>> permissoesPorEmail = new HashMap<>();
+
     // Hash usado quando o e-mail não existe, só para a conferência levar o mesmo tempo
     private final String hashFalso;
 
@@ -27,7 +31,9 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.tokenService = tokenService;
         for (AuthProperties.Usuario usuario : properties.usuarios()) {
-            hashPorEmail.put(usuario.email().trim().toLowerCase(), passwordEncoder.encode(usuario.senha()));
+            String email = usuario.email().trim().toLowerCase();
+            hashPorEmail.put(email, passwordEncoder.encode(usuario.senha()));
+            permissoesPorEmail.put(email, usuario.permissoes().stream().map(String::trim).filter(p -> !p.isEmpty()).toList());
         }
         this.hashFalso = passwordEncoder.encode("usuario-inexistente");
     }
@@ -42,6 +48,6 @@ public class AuthService {
         if (hash == null || !senhaConfere) {
             throw new CredenciaisInvalidasException();
         }
-        return tokenService.gerar(email);
+        return tokenService.gerar(email, permissoesPorEmail.getOrDefault(email, List.of()));
     }
 }

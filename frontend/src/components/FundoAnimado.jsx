@@ -4,10 +4,13 @@ import { useEffect, useState } from 'react'
 //  1) Pistas: bonecos correm da esquerda para a direita e carimbam os documentos
 //     do caminho — o ✓ ou o ✗ aparece exatamente quando o carimbo bate na folha.
 //  2) Folhas soltas subindo devagar, umas aprovadas, outras reprovadas.
-//  3) Carimbos gigantes "APROVADO"/"REPROVADO" que aparecem e somem bem de leve.
+// Variantes: "completa" (login: 3 pistas e todas as folhas) e "discreta" (telas internas:
+// só a pista da frente e poucas folhas, mais apagadas, para não competir com o conteúdo).
+// Não há palavras APROVADO/REPROVADO no fundo: elas contradiziam o status real da solicitação.
+// A animação pausa quando a aba do navegador fica escondida.
 // Tudo em CSS (transform/opacity); com "reduzir movimento" no sistema, a cena fica parada.
 
-const COR = { corpo: '#d97757', olho: '#141414', folha: '#e8f4f8', linha: '#9aabb3', cabo: '#c4cdd3', tinta: '#4d8dff', ok: '#5ee08f', erro: '#ff6b7a' }
+import { PIXEL as COR } from '../pixel.js'
 
 const VISTO = [[1, 4], [2, 5], [3, 6], [4, 5], [5, 4], [6, 3]]
 const XIS = [[2, 2], [3, 3], [4, 4], [5, 5], [6, 6], [6, 2], [5, 3], [3, 5], [2, 6]]
@@ -26,13 +29,6 @@ const FOLHAS = [
   { x: 51, t: 10, dur: 54, atraso: -9, giro: -20, ok: 0 }, { x: 63, t: 6, dur: 48, atraso: -27, giro: 8, ok: 1 },
   { x: 74, t: 12, dur: 60, atraso: -51, giro: -10, ok: 0 }, { x: 86, t: 8, dur: 52, atraso: -14, giro: 14, ok: 1 },
   { x: 94, t: 9, dur: 57, atraso: -38, giro: -16, ok: 0 }, { x: 45, t: 5, dur: 66, atraso: -58, giro: 22, ok: 1 },
-]
-
-const CARIMBOS = [
-  { texto: 'Aprovado', ok: 1, x: '6%', y: '24%', giro: -12, atraso: 0 },
-  { texto: 'Reprovado', ok: 0, x: '56%', y: '60%', giro: 9, atraso: -6 },
-  { texto: 'Aprovado', ok: 1, x: '60%', y: '6%', giro: 6, atraso: -11 },
-  { texto: 'Reprovado', ok: 0, x: '10%', y: '70%', giro: -7, atraso: -16 },
 ]
 
 const pct = (n) => `${Math.min(100, Math.max(0, n)).toFixed(2)}%`
@@ -116,8 +112,19 @@ function Pista({ pista, i, largura }) {
   )
 }
 
-export default function FundoAnimado() {
+export default function FundoAnimado({ variante = 'completa' }) {
   const [largura, setLargura] = useState(() => window.innerWidth)
+  const [escondido, setEscondido] = useState(() => document.hidden)
+
+  useEffect(() => {
+    const aoMudarVisibilidade = () => setEscondido(document.hidden)
+    document.addEventListener('visibilitychange', aoMudarVisibilidade)
+    return () => document.removeEventListener('visibilitychange', aoMudarVisibilidade)
+  }, [])
+
+  const discreta = variante === 'discreta'
+  const pistas = discreta ? PISTAS.slice(-1) : PISTAS
+  const folhas = discreta ? FOLHAS.filter((_, i) => i % 3 === 0) : FOLHAS
 
   useEffect(() => {
     let espera
@@ -127,18 +134,13 @@ export default function FundoAnimado() {
   }, [])
 
   return (
-    <div className="fundo" aria-hidden="true">
-      {CARIMBOS.map((c, i) => (
-        <span key={i} className={`fundo-carimbo ${c.ok ? 'ok' : 'erro'}`}
-              style={{ left: c.x, top: c.y, '--giro': `${c.giro}deg`, animationDelay: `${c.atraso}s` }}>{c.texto}</span>
-      ))}
-
-      {FOLHAS.map((f, i) => (
+    <div className={`fundo fundo-${variante}${escondido ? ' fundo-pausado' : ''}`} aria-hidden="true">
+      {folhas.map((f, i) => (
         <Folha key={i} ok={f.ok} className="fundo-folha"
                style={{ left: `${f.x}%`, width: f.t * 4, height: f.t * 5, '--giro': `${f.giro}deg`, animationDuration: `${f.dur}s`, animationDelay: `${f.atraso}s` }} />
       ))}
 
-      {PISTAS.map((p, i) => <Pista key={i} pista={p} i={i} largura={largura} />)}
+      {pistas.map((p, i) => <Pista key={p.topo} pista={p} i={i} largura={largura} />)}
     </div>
   )
 }

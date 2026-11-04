@@ -1,7 +1,9 @@
 // Boneco em dúvida (pixel art): balança a cabeça dizendo "não" e tem um "?" flutuando em cima.
 // Usado quando a busca/filtro da lista não encontra nada. Animação em CSS (classes duvida-*).
 
-const COR = { corpo: '#d97757', olho: '#141414', interrogacao: '#4d8dff' }
+import { PIXEL } from '../pixel.js'
+
+const COR = { corpo: PIXEL.corpo, olho: PIXEL.olho, interrogacao: PIXEL.tinta }
 
 // "?" em pixels (5 de largura x 7 de altura), desenhado a partir de x=14, y=0
 const INTERROGACAO = [

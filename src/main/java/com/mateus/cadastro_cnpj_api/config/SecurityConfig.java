@@ -2,6 +2,7 @@ package com.mateus.cadastro_cnpj_api.config;
 
 import com.mateus.cadastro_cnpj_api.service.TokenService;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
+import jakarta.servlet.DispatcherType;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -41,7 +42,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, AuthenticationEntryPoint entryPoint) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, AuthenticationEntryPoint entryPoint,
+                                           @Qualifier("handlerExceptionResolver") HandlerExceptionResolver resolver) throws Exception {
         http
                 // API sem sessão nem formulário: cada requisição traz o próprio token
                 .csrf(csrf -> csrf.disable())
@@ -49,14 +51,29 @@ public class SecurityConfig {
                 // O H2 Console abre dentro de um frame
                 .headers(h -> h.frameOptions(f -> f.sameOrigin()))
                 .authorizeHttpRequests(a -> a
+                        // Despacho assíncrono do SSE (QA Center): a autorização já foi feita na requisição original
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/token").permitAll()
                         .requestMatchers("/h2-console/**", "/error").permitAll()
+                        // QA Center: cada operação exige a permissão própria (claim "scope" do token)
+                        .requestMatchers(HttpMethod.GET, "/qa/relatorios/**").hasAuthority("SCOPE_qa.reports.view")
+                        .requestMatchers(HttpMethod.GET, "/qa/auditoria").hasAuthority("SCOPE_qa.configure")
+                        .requestMatchers(HttpMethod.PUT, "/qa/configuracoes").hasAuthority("SCOPE_qa.configure")
+                        .requestMatchers(HttpMethod.POST, "/qa/suites").hasAuthority("SCOPE_qa.configure")
+                        .requestMatchers(HttpMethod.PUT, "/qa/suites/*").hasAuthority("SCOPE_qa.configure")
+                        .requestMatchers(HttpMethod.DELETE, "/qa/suites/*").hasAuthority("SCOPE_qa.configure")
+                        .requestMatchers(HttpMethod.POST, "/qa/execucoes/*/cancelar").hasAuthority("SCOPE_qa.cancel")
+                        .requestMatchers(HttpMethod.POST, "/qa/execucoes", "/qa/execucoes/*/reexecutar").hasAuthority("SCOPE_qa.execute")
+                        .requestMatchers(HttpMethod.GET, "/qa/**").hasAuthority("SCOPE_qa.view")
+                        .requestMatchers("/qa/**").denyAll()
                         .anyRequest().authenticated())
                 // Lê o header "Authorization: Bearer <token>" e valida o JWT
                 .oauth2ResourceServer(o -> o
                         .jwt(jwt -> jwt.decoder(jwtDecoder()))
                         .authenticationEntryPoint(entryPoint))
-                .exceptionHandling(e -> e.authenticationEntryPoint(entryPoint));
+                // 403 também sai no formato JSON padrão: repassa a exceção para o GlobalExceptionHandler
+                .exceptionHandling(e -> e.authenticationEntryPoint(entryPoint)
+                        .accessDeniedHandler((request, response, ex) -> resolver.resolveException(request, response, null, ex)));
         return http.build();
     }
 

@@ -1,8 +1,8 @@
 # Front-end — Carimbô
 
-Portal de **consulta** em React + Vite para a API `cadastro-cnpj-api`.
+Portal web em React + Vite para a API `cadastro-cnpj-api`.
 
-O front **só lê**: mostra a lista de solicitações, o andamento e o resultado de cada uma. Criar solicitação, enviar PDF e cancelar são feitos pela API.
+Mostra a lista de solicitações, o andamento e o resultado de cada uma, e permite **enviar os PDFs pendentes** (botão ou arrastar e soltar), usando o endpoint `POST /solicitacoes/{id}/documento`. Criar e cancelar solicitações continuam sendo feitos pela API.
 
 ## Como rodar
 
@@ -24,17 +24,20 @@ O Vite repassa tudo que começa com `/api` para `http://localhost:8080` (veja `v
 |---|---|---|
 | Login | `/login` | Gera o token; a sessão encerra sozinha quando o token vence. |
 | Solicitações | `/solicitacoes` | Lista com abas de status, busca por número de solicitação e atualização automática. |
-| Detalhe | `/solicitacoes/{id}` | Status, etapas, documentos, histórico e o resultado da análise. |
+| Detalhe | `/solicitacoes/{id}` | Número e status, prazo, etapas, envio dos documentos pendentes, linha do tempo e o resultado da análise. |
 
 ## Estrutura
 
 ```
 src/
-  api.js          chamadas à API (token no header, erros em ApiError)
+  api.js          chamadas à API (token no header, erros em ApiError) — login, listar, buscar, enviarDocumento
   auth.jsx        login/logout e proteção das rotas
   format.js       textos de status e formatação de datas
   main.jsx        rotas
   styles.css      visual
-  components/     Layout, Cabecalho, Marca, FundoAnimado, Mascote, MascoteDuvida, Carimbo, StatusBadge, Icone
+  hooks.js        useAgora (relógio compartilhado)
+  pixel.js        paleta única da pixel art (logo, mascotes, fundo)
+  components/     Layout, Marca, FundoAnimado, Mascote, MascoteDuvida, Carimbo, StatusBadge, Icone,
+                  Etapas, Documentos, Historico, Prazo, ProgressoDocumentos, Carregando
   pages/          Login, Lista, Detalhe
 ```

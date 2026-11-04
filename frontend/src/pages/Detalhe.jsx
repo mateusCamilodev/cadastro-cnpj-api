@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api.js'
-import { FINAIS, STATUS, dataHora, hora, tempoRestante } from '../format.js'
+import { FINAIS, STATUS, dataCurta, dataHora, tempoAtras } from '../format.js'
+import { useAgora } from '../hooks.js'
 import StatusBadge from '../components/StatusBadge.jsx'
-import Cabecalho from '../components/Cabecalho.jsx'
 import Icone from '../components/Icone.jsx'
 import Mascote from '../components/Mascote.jsx'
 import Carimbo from '../components/Carimbo.jsx'
-
-// Tela só de consulta: criação, envio de PDF e cancelamento acontecem pela API (Postman, curl...).
-// Ela se atualiza sozinha enquanto a solicitação ainda pode mudar.
-
-const ETAPAS = ['Recebida', 'Envio de documentos', 'Análise', 'Resultado']
+import Etapas from '../components/Etapas.jsx'
+import Documentos from '../components/Documentos.jsx'
+import Historico from '../components/Historico.jsx'
+import Prazo from '../components/Prazo.jsx'
+import ProgressoDocumentos from '../components/ProgressoDocumentos.jsx'
+import Carregando from '../components/Carregando.jsx'
 
 const NOMES_CAMPOS = {
   solicitacao: 'número da solicitação', nome: 'nome', cpf: 'CPF', email: 'e-mail', telefone: 'telefone', dataNascimento: 'data de nascimento',
@@ -26,21 +27,31 @@ function camposDivergentes(historico) {
   return `${campos.slice(0, -1).join(', ')} e ${campos.at(-1)}`
 }
 
-function dataCurta(iso) {
-  return iso ? new Date(iso).toLocaleDateString('pt-BR') : null
-}
-
-function indiceEtapa(status) {
-  return { RECEBIDO: 0, AGUARDANDO_DOCUMENTO: 1, EM_PROCESSAMENTO: 2, APROVADO: 3, REPROVADO: 3 }[status] ?? 0
+// Botão de copiar o ID completo (o ID curto é o que aparece na tela)
+function CopiarId({ id }) {
+  const [copiado, setCopiado] = useState(false)
+  async function copiar() {
+    try {
+      await navigator.clipboard.writeText(id)
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 1600)
+    } catch { /* navegador sem permissão de área de transferência: o ID continua visível no title */ }
+  }
+  return (
+    <button type="button" className={`id-copiar${copiado ? ' copiado' : ''}`} onClick={copiar} title={id}
+            aria-label={copiado ? 'ID copiado' : 'Copiar ID completo'}>
+      <span className="mono">#{id.slice(0, 8)}</span>
+      <Icone nome={copiado ? 'check' : 'copiar'} tamanho={13} />
+    </button>
+  )
 }
 
 export default function Detalhe() {
   const { id } = useParams()
   const [detalhe, setDetalhe] = useState(null)   // GET /solicitacoes/{id} → status + histórico
-  const [resumo, setResumo] = useState(null)     // item do GET /solicitacoes → arquivos declarados
+  const [resumo, setResumo] = useState(null)     // item do GET /solicitacoes → número, datas, prazo e arquivos
   const [erro, setErro] = useState('')
-  const [agora, setAgora] = useState(Date.now())
-  const [atualizadoEm, setAtualizadoEm] = useState(null)
+  const agora = useAgora(30000)                  // só para o "há X min" do cabeçalho
 
   const carregar = useCallback(async () => {
     try {
@@ -48,7 +59,6 @@ export default function Detalhe() {
       setDetalhe(d)
       setResumo(lista.find((s) => s.id === id) || null)
       setErro('')
-      setAtualizadoEm(new Date().toISOString())
     } catch (e) {
       setErro(e.message)
     }
@@ -65,76 +75,83 @@ export default function Detalhe() {
     return () => clearInterval(t)
   }, [carregar])
 
-  useEffect(() => {
-    const t = setInterval(() => setAgora(Date.now()), 1000)
-    return () => clearInterval(t)
-  }, [])
+  const trilha = (
+    <nav className="trilha" aria-label="Você está em">
+      <Link to="/solicitacoes" className="trilha-voltar"><Icone nome="voltar" tamanho={15} />Solicitações</Link>
+    </nav>
+  )
 
   if (erro && !detalhe) {
     return (
       <div className="pagina">
-        <Cabecalho trilha={[{ label: 'Solicitações', para: '/solicitacoes' }, { label: 'Detalhe' }]} titulo="Solicitação" />
+        {trilha}
+        <h1 className="detalhe-titulo">Solicitação não encontrada</h1>
         <div className="mensagem mensagem-erro"><Icone nome="alerta" />{erro}</div>
-        <Link to="/solicitacoes" className="botao botao-secundario"><Icone nome="voltar" />Voltar para a lista</Link>
       </div>
     )
   }
-  if (!detalhe) return <div className="pagina"><p className="carregando">Carregando…</p></div>
+  if (!detalhe) return <div className="pagina"><Carregando texto="Carregando solicitação…" /></div>
 
   const status = detalhe.status
-  const etapa = indiceEtapa(status)
-  const finalizada = FINAIS.includes(status)
   const interrompida = status === 'CANCELADO' || status === 'EXPIRADO'
   const aguardando = status === 'AGUARDANDO_DOCUMENTO'
+  const temResultado = status === 'APROVADO' || status === 'REPROVADO'
   const numero = resumo?.solicitacao || 'Solicitação'
 
   return (
     <div className="pagina">
-      <Cabecalho trilha={[{ label: 'Solicitações', para: '/solicitacoes' }, { label: numero }]} titulo={numero}>
-        <Link to="/solicitacoes" className="botao botao-secundario"><Icone nome="voltar" tamanho={16} />Voltar para a lista</Link>
-      </Cabecalho>
+      {trilha}
 
-      {/* Resumo */}
-      <dl className="painel resumo">
-        <div><dt>Status</dt><dd><StatusBadge status={status} /></dd></div>
-        <div><dt>Criada em</dt><dd>{dataHora(resumo?.dataCriacao)}</dd></div>
-        <div><dt>Documentos</dt><dd className="tabular">{resumo ? `${resumo.documentosRecebidos} de ${resumo.documentosEsperados}` : '—'}</dd></div>
+      {/* Cabeçalho: número + status lado a lado (o dado mais importante fica no topo) */}
+      <header className="detalhe-cabecalho">
+        <div className="detalhe-titulo-linha">
+          <h1 className="detalhe-titulo">{numero}</h1>
+          <StatusBadge status={status} />
+        </div>
+        <p className="detalhe-meta">
+          {resumo && <>Criada {tempoAtras(resumo.dataCriacao, agora)} <span className="ponto-sep" aria-hidden="true" /> </>}
+          <CopiarId id={id} />
+        </p>
+        {/* Leitor de tela: avisa quando o status muda com a atualização automática */}
+        <p className="somente-leitor" aria-live="polite">Status atual: {STATUS[status]?.label}</p>
+      </header>
+
+      {erro && (
+        <div className="mensagem mensagem-alerta" role="status">
+          <Icone nome="alerta" />Não foi possível atualizar agora ({erro}). Mostrando os últimos dados recebidos.
+        </div>
+      )}
+
+      {/* Números principais */}
+      <dl className="painel metricas">
         <div>
           <dt>Prazo de envio</dt>
-          <dd>{aguardando && resumo?.prazoDocumento
-            ? <span className="prazo"><Icone nome="relogio" tamanho={16} /><span className="tabular">{tempoRestante(resumo.prazoDocumento, agora)}</span></span>
-            : '—'}</dd>
+          <dd>{aguardando && resumo?.prazoDocumento ? <Prazo ate={resumo.prazoDocumento} grande /> : <span className="suave">{status === 'RECEBIDO' ? 'Liberado em instantes' : 'Encerrado'}</span>}</dd>
         </div>
-        <div className="resumo-id"><dt>ID</dt><dd className="mono">{id}</dd></div>
+        <div>
+          <dt>Documentos</dt>
+          <dd>{resumo ? <ProgressoDocumentos recebidos={resumo.documentosRecebidos} esperados={resumo.documentosEsperados} rotulo /> : '—'}</dd>
+        </div>
+        <div>
+          <dt>Criada em</dt>
+          <dd className="tabular">{dataHora(resumo?.dataCriacao)}</dd>
+        </div>
+        <div>
+          <dt>Última atualização</dt>
+          <dd className="tabular">{dataHora(resumo?.dataAtualizacao)}</dd>
+        </div>
       </dl>
 
-      {/* Etapas */}
-      {!interrompida && (
-        <ol className="painel etapas">
-          {ETAPAS.map((nome, i) => {
-            const concluida = i < etapa || (finalizada && i === etapa)
-            const atual = i === etapa && !finalizada
-            const reprovada = i === 3 && status === 'REPROVADO'
-            const rotulo = i === 3 && finalizada ? STATUS[status].label : nome
-            return (
-              <li key={nome} className={`etapa${concluida ? ' concluida' : ''}${atual ? ' atual' : ''}${reprovada ? ' reprovada' : ''}`}>
-                <span className="etapa-marcador">
-                  {concluida ? <Icone nome={reprovada ? 'x' : 'check'} tamanho={14} /> : i + 1}
-                </span>
-                <span className="etapa-nome">{rotulo}</span>
-              </li>
-            )
-          })}
-        </ol>
-      )}
+      {!interrompida && <section className="painel painel-etapas"><Etapas status={status} /></section>}
 
       {interrompida && (
         <div className="mensagem mensagem-neutra">
           <Icone nome="alerta" />
-          Solicitação {STATUS[status].label.toLowerCase()}. O número da solicitação e o CNPJ ficaram disponíveis para uma nova solicitação.
+          Solicitação {status === 'CANCELADO' ? 'cancelada' : 'expirada'}. O número da solicitação e o CNPJ ficaram disponíveis para uma nova solicitação.
         </div>
       )}
-      {(status === 'APROVADO' || status === 'REPROVADO') && (
+
+      {temResultado && (
         <section className={`resultado resultado-${status === 'APROVADO' ? 'aprovado' : 'reprovado'}`}>
           <Mascote humor={status === 'APROVADO' ? 'feliz' : 'triste'} />
           <div className="resultado-texto">
@@ -153,47 +170,8 @@ export default function Detalhe() {
       )}
 
       <div className="colunas">
-        {/* Documentos (só a situação de cada um) */}
-        <section className="painel">
-          <div className="painel-cabecalho">
-            <h2>Documentos</h2>
-            <span className="painel-info">Enviados pela API</span>
-          </div>
-
-          <ul className="documentos">
-            {resumo?.arquivos.map((a) => (
-              <li key={a.nomeArquivo}>
-                <Icone nome="arquivo" />
-                <span className="documento-nome">{a.nomeArquivo}</span>
-                {a.recebido
-                  ? <span className="documento-situacao recebido"><Icone nome="check" tamanho={14} />Recebido</span>
-                  : <span className="documento-situacao">Pendente</span>}
-              </li>
-            ))}
-          </ul>
-
-          {status === 'RECEBIDO' && <p className="painel-nota">O envio de documentos é liberado em alguns segundos.</p>}
-          {aguardando && <p className="painel-nota">Aguardando o envio dos documentos pendentes.</p>}
-        </section>
-
-        {/* Histórico */}
-        <section className="painel">
-          <div className="painel-cabecalho">
-            <h2>Histórico</h2>
-            {atualizadoEm && <span className="painel-info">Atualizado às {hora(atualizadoEm)}</span>}
-          </div>
-          <ol className="historico">
-            {detalhe.historico.map((ev, i) => (
-              <li key={i}>
-                <time className="tabular" title={dataHora(ev.dataHora)}>{hora(ev.dataHora)}</time>
-                <div>
-                  <StatusBadge status={ev.status} />
-                  <p>{ev.descricao}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </section>
+        <Documentos id={id} arquivos={resumo?.arquivos} status={status} prazo={resumo?.prazoDocumento} aoEnviar={carregar} />
+        <Historico eventos={detalhe.historico} />
       </div>
     </div>
   )
